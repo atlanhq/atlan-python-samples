@@ -35,6 +35,8 @@ SCORED_ATTRS = [
     "assignedEntities",
     "seeAlso",
     "links",
+    "certificateStatus",
+    "readme",
 ]
 client = AtlanClient()
 

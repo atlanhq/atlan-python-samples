@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2023 Atlan Pte. Ltd.
 from typing import List, Optional
 
 from pyatlan.cache.custom_metadata_cache import CustomMetadataCache
@@ -13,8 +15,12 @@ from pyatlan.events.atlan_event_handler import (
 )
 from pyatlan.exceptions import AtlanException
 from pyatlan.model.assets import Asset, Badge, AtlasGlossaryTerm, Readme
-from pyatlan.model.enums import CertificateStatus, AtlanCustomAttributePrimitiveType, BadgeComparisonOperator, \
-    BadgeConditionColor
+from pyatlan.model.enums import (
+    CertificateStatus,
+    AtlanCustomAttributePrimitiveType,
+    BadgeComparisonOperator,
+    BadgeConditionColor,
+)
 from pyatlan.model.events import AtlanEvent, AtlanEventPayload
 from pyatlan.model.structs import BadgeCondition
 from pyatlan.model.typedef import CustomMetadataDef, AttributeDef
@@ -41,7 +47,7 @@ SCORED_ATTRS = [
 client = AtlanClient()
 
 
-def _create_cm_if_not_exists() -> str:
+def _create_cm_if_not_exists() -> Optional[str]:
     try:
         return CustomMetadataCache.get_id_for_name(CM_DAAP)
     except NotFoundError:
@@ -76,7 +82,7 @@ def _create_cm_if_not_exists() -> str:
                         badge_condition_value="25",
                         badge_condition_colorhex=BadgeConditionColor.RED,
                     ),
-                ]
+                ],
             )
             try:
                 client.upsert(badge)
@@ -89,11 +95,14 @@ def _create_cm_if_not_exists() -> str:
             try:
                 return CustomMetadataCache.get_id_for_name(CM_DAAP)
             except AtlanException:
-                print("Unable to look up DaaP custom metadata, even though it should already exist.")
+                print(
+                    "Unable to look up DaaP custom metadata, even though it should already exist."
+                )
         except AtlanException:
             print("Unable to create DaaP custom metadata structure.")
     except AtlanException:
         print("Unable to look up DaaP custom metadata.")
+    return None
 
 
 class LambdaScorer(AtlanEventHandler):
@@ -106,14 +115,16 @@ class LambdaScorer(AtlanEventHandler):
 
     def get_current_state(self, from_event: Asset) -> Optional[Asset]:
         search_attrs = SCORED_ATTRS
-        search_attrs.extend(CustomMetadataCache.get_attributes_for_search_results(CM_DAAP))
+        search_attrs.extend(
+            CustomMetadataCache.get_attributes_for_search_results(CM_DAAP)
+        )
         print(f"Searching with: {search_attrs}")
         return get_current_view_of_asset(
             self.client,
             from_event,
             search_attrs,
             include_meanings=True,
-            include_atlan_tags=True
+            include_atlan_tags=True,
         )
 
     def has_changes(self, original: Asset, modified: Asset) -> bool:
@@ -150,7 +161,14 @@ class LambdaScorer(AtlanEventHandler):
                         s_readme = 10
                     elif len(description) > 100:
                         s_readme = 5
-            score = s_description + s_related_term + s_links + s_related_asset + s_certificate + s_readme
+            score = (
+                s_description
+                + s_related_term
+                + s_links
+                + s_related_asset
+                + s_certificate
+                + s_readme
+            )
         elif not asset.type_name.startswith("AtlasGlossary"):
             # We will not score glossaries or categories
             s_description = 15 if has_description(asset) else 0

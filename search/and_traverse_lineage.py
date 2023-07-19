@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2023 Atlan Pte. Ltd.
 from pyatlan.client.atlan import AtlanClient
 from pyatlan.model.assets import SigmaWorkbook, Asset
 from pyatlan.model.enums import LineageDirection, AtlanComparisonOperator
@@ -17,11 +19,7 @@ def find_all(type_name: str):
     """
     are_active = Term.with_state("ACTIVE")
     are_term = Term.with_type_name(type_name)
-    dsl = DSL(
-        query=are_active + are_term,
-        from_=0,
-        size=100
-    )
+    dsl = DSL(query=are_active + are_term, from_=0, size=100)
     search_request = IndexSearchRequest(dsl=dsl)
     return client.search(search_request)
 
@@ -33,9 +31,7 @@ def upstream_certified_sources(guid: str) -> list[Asset]:
     is VERIFIED, this function will return a list of all such assets; otherwise
     it will return an empty list.
     """
-    request = LineageListRequest.create(
-        guid=guid
-    )
+    request = LineageListRequest.create(guid=guid)
     request.depth = 1000000
     request.direction = LineageDirection.UPSTREAM
     request.offset = 0
@@ -49,7 +45,7 @@ def upstream_certified_sources(guid: str) -> list[Asset]:
                 operator=AtlanComparisonOperator.CONTAINS,
                 attribute_value="VERIFIED",
             )
-        ]
+        ],
     )
     response = client.get_lineage_list(request)
     verified_assets: list[Asset] = []
@@ -65,11 +61,15 @@ def main():
         if isinstance(workbook, SigmaWorkbook):
             verified_sources = upstream_certified_sources(workbook.guid)
             if verified_sources:
-                logger.info(f"Workbook '{workbook.name}' ({workbook.guid}) has upstream verified sources: ")
+                logger.info(
+                    f"Workbook '{workbook.name}' ({workbook.guid}) has upstream verified sources: "
+                )
                 for asset in verified_sources:
                     logger.info(f" ... {asset.type_name}: {asset.qualified_name}")
             else:
-                logger.info(f"Workbook '{workbook.name}' ({workbook.guid}) does NOT have any upstream verified sources.")
+                logger.info(
+                    f"Workbook '{workbook.name}' ({workbook.guid}) does NOT have any upstream verified sources."
+                )
 
 
 if __name__ == "__main__":

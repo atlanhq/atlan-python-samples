@@ -1,9 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2023 Atlan Pte. Ltd.
 from pyatlan.cache.enum_cache import EnumCache
 from pyatlan.client.atlan import AtlanClient
 from pyatlan.cache.custom_metadata_cache import CustomMetadataCache
 from pyatlan.error import NotFoundError
 from pyatlan.model.assets import Badge
-from pyatlan.model.enums import AtlanCustomAttributePrimitiveType, BadgeConditionColor, BadgeComparisonOperator
+from pyatlan.model.enums import (
+    AtlanCustomAttributePrimitiveType,
+    BadgeConditionColor,
+    BadgeComparisonOperator,
+)
 from pyatlan.model.structs import BadgeCondition
 from pyatlan.model.typedef import AttributeDef, CustomMetadataDef, EnumDef
 from pyatlan.utils import get_logger
@@ -21,15 +27,10 @@ def create_custom_metadata_options():
     Create custom metadata options (enumeration), if it does not yet exist.
     """
     if EnumCache.get_by_name(ENUM_NAME):
-        logger.info(
-            f"{ENUM_NAME} enumeration has already been created."
-        )
+        logger.info(f"{ENUM_NAME} enumeration has already been created.")
         return
 
-    enum_def = EnumDef.create(
-        name=ENUM_NAME,
-        values=["Poor", "OK", "Great"]
-    )
+    enum_def = EnumDef.create(name=ENUM_NAME, values=["Poor", "OK", "Great"])
     response = client.create_typedef(enum_def)
     assert response
     logger.info(f"{ENUM_NAME} enumeration created.")
@@ -50,21 +51,21 @@ def create_custom_metadata_structure():
             AttributeDef.create(
                 display_name="Rating",
                 attribute_type=AtlanCustomAttributePrimitiveType.OPTIONS,
-                options_name=ENUM_NAME
+                options_name=ENUM_NAME,
             ),
             AttributeDef.create(
                 display_name="Passed count",
-                attribute_type=AtlanCustomAttributePrimitiveType.INTEGER
+                attribute_type=AtlanCustomAttributePrimitiveType.INTEGER,
             ),
             AttributeDef.create(
                 display_name="Failed count",
-                attribute_type=AtlanCustomAttributePrimitiveType.INTEGER
+                attribute_type=AtlanCustomAttributePrimitiveType.INTEGER,
             ),
             AttributeDef.create(
                 display_name="Detailed reports",
                 attribute_type=AtlanCustomAttributePrimitiveType.URL,
-                multi_valued=True
-            )
+                multi_valued=True,
+            ),
         ]
         cm_def.options = CustomMetadataDef.Options.with_logo_from_url(
             url="http://assets.atlan.com/assets/atlan-a-logo-blue-background.png"
@@ -86,17 +87,17 @@ def create_badge():
         badge_conditions=[
             BadgeCondition.create(
                 badge_condition_operator=BadgeComparisonOperator.EQ,
-                badge_condition_value="\"Great\"",
+                badge_condition_value='"Great"',
                 badge_condition_colorhex=BadgeConditionColor.GREEN,
             ),
             BadgeCondition.create(
                 badge_condition_operator=BadgeComparisonOperator.EQ,
-                badge_condition_value="\"OK\"",
+                badge_condition_value='"OK"',
                 badge_condition_colorhex=BadgeConditionColor.YELLOW,
             ),
             BadgeCondition.create(
                 badge_condition_operator=BadgeComparisonOperator.EQ,
-                badge_condition_value="\"Poor\"",
+                badge_condition_value='"Poor"',
                 badge_condition_colorhex=BadgeConditionColor.RED,
             ),
         ],

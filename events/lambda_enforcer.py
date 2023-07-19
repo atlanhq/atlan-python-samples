@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2023 Atlan Pte. Ltd.
 from typing import List, Optional
 
 from pyatlan.client.atlan import AtlanClient

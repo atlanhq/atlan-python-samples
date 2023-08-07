@@ -1,19 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2023 Atlan Pte. Ltd.
+from pyatlan.cache.custom_metadata_cache import CustomMetadataCache
 from pyatlan.cache.enum_cache import EnumCache
 from pyatlan.client.atlan import AtlanClient
-from pyatlan.cache.custom_metadata_cache import CustomMetadataCache
 from pyatlan.error import NotFoundError
 from pyatlan.model.assets import Badge
 from pyatlan.model.enums import (
     AtlanCustomAttributePrimitiveType,
-    BadgeConditionColor,
     BadgeComparisonOperator,
+    BadgeConditionColor,
 )
 from pyatlan.model.structs import BadgeCondition
 from pyatlan.model.typedef import AttributeDef, CustomMetadataDef, EnumDef
 from pyatlan.utils import get_logger
-
 
 ENUM_NAME = "QDRating"
 CUSTOM_METADATA_NAME = "Quality Data"
@@ -32,7 +31,7 @@ def create_custom_metadata_options():
 
     enum_def = EnumDef.create(name=ENUM_NAME, values=["Poor", "OK", "Great"])
     response = client.create_typedef(enum_def)
-    assert response
+    assert response  # noqa: S101
     logger.info(f"{ENUM_NAME} enumeration created.")
 
 
@@ -43,7 +42,8 @@ def create_custom_metadata_structure():
     try:
         CustomMetadataCache.get_id_for_name(CUSTOM_METADATA_NAME)
         logger.info(
-            f"{CUSTOM_METADATA_NAME} custom metadata structure has already been created."
+            f"{CUSTOM_METADATA_NAME} custom metadata structure has "
+            f"already been created."
         )
     except NotFoundError:
         cm_def = CustomMetadataDef.create(display_name=CUSTOM_METADATA_NAME)
@@ -71,7 +71,7 @@ def create_custom_metadata_structure():
             url="http://assets.atlan.com/assets/atlan-a-logo-blue-background.png"
         )
         result = client.create_typedef(cm_def)
-        assert result
+        assert result  # noqa: S101
         logger.info(f"{CUSTOM_METADATA_NAME} custom metadata structure created.")
 
 
@@ -104,7 +104,7 @@ def create_badge():
     )
     badge.user_description = "Overall quality rating for the asset."
     response = client.upsert(badge)
-    assert response.assets_created(asset_type=Badge)
+    assert response.assets_created(asset_type=Badge)  # noqa: S101
     logger.info(f"Badge for {CUSTOM_METADATA_NAME}:Rating created / updated.")
 
 

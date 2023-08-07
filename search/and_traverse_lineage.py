@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2023 Atlan Pte. Ltd.
-from pyatlan.client.atlan import AtlanClient
-from pyatlan.model.assets import SigmaWorkbook, Asset
-from pyatlan.model.enums import LineageDirection, AtlanComparisonOperator
-from pyatlan.model.lineage import LineageListRequest, FilterList, EntityFilter
-from pyatlan.client.atlan import IndexSearchRequest
+from pyatlan.client.atlan import AtlanClient, IndexSearchRequest, IndexSearchResults
+from pyatlan.model.assets import Asset, SigmaWorkbook
+from pyatlan.model.enums import AtlanComparisonOperator, LineageDirection
+from pyatlan.model.lineage import EntityFilter, FilterList, LineageListRequest
 from pyatlan.model.search import DSL, Term
 from pyatlan.utils import get_logger
 
@@ -12,10 +11,13 @@ client = AtlanClient()
 logger = get_logger(level="INFO")
 
 
-def find_all(type_name: str):
+def find_all(type_name: str) -> IndexSearchResults:
     """
     This query will find all assets of the specified type
     that are active (not archived or soft-deleted).
+
+    :param type_name: type of assets to find
+    :returns: results of the search
     """
     are_active = Term.with_state("ACTIVE")
     are_term = Term.with_type_name(type_name)
@@ -26,10 +28,13 @@ def find_all(type_name: str):
 
 def upstream_certified_sources(guid: str) -> list[Asset]:
     """
-    Given the GUID of an asset, this will look for all upstream assets in lineage that
-    have a certificate of VERIFIED. If any Table, View or MaterialisedView is found that
-    is VERIFIED, this function will return a list of all such assets; otherwise
-    it will return an empty list.
+    Given the GUID of an asset, this will look for all upstream assets in
+    lineage that have a certificate of VERIFIED. If any Table, View or
+    MaterialisedView is found that is VERIFIED, this function will return a
+    list of all such assets; otherwise it will return an empty list.
+
+    :param guid: unique identifier (GUID) of the asset from which to start
+    :returns: all upstream assets with a VERIFIED certificate
     """
     request = LineageListRequest.create(guid=guid)
     request.depth = 1000000
@@ -62,13 +67,15 @@ def main():
             verified_sources = upstream_certified_sources(workbook.guid)
             if verified_sources:
                 logger.info(
-                    f"Workbook '{workbook.name}' ({workbook.guid}) has upstream verified sources: "
+                    f"Workbook '{workbook.name}' ({workbook.guid})"
+                    f"has upstream verified sources: "
                 )
                 for asset in verified_sources:
-                    logger.info(f" ... {asset.type_name}: {asset.qualified_name}")
+                    logger.info(f" . {asset.type_name}: {asset.qualified_name}")
             else:
                 logger.info(
-                    f"Workbook '{workbook.name}' ({workbook.guid}) does NOT have any upstream verified sources."
+                    f"Workbook '{workbook.name}' ({workbook.guid}) does"
+                    f"NOT have any upstream verified sources."
                 )
 
 

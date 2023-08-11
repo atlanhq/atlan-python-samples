@@ -6,7 +6,7 @@ from pyatlan.cache.custom_metadata_cache import CustomMetadataCache
 from pyatlan.client.atlan import AtlanClient
 from pyatlan.model.assets import Asset
 from pyatlan.model.enums import AtlanConnectorType
-from pyatlan.model.search import Term, Terms, TermAttributes, DSL, IndexSearchRequest
+from pyatlan.model.search import DSL, IndexSearchRequest, TermAttributes, Terms
 from pyatlan.utils import get_logger
 
 CUSTOM_METADATA_NAME = "Quality Data"
@@ -21,14 +21,18 @@ def find_asset(
     attributes: Optional[list[str]] = None,
 ) -> Asset:
     """
-    Given a connector type and otherwise-qualified name (not including the connection
-    portion of the qualified_name), finds and returns the asset in question.
+    Given a connector type and otherwise-qualified name (not including the
+    connection portion of the qualified_name), finds and returns the asset in
+    question.
+
     :param connector_type: the type of connector in which the asset can be found
     :param connection_name: the simple name of the connection
-    :param asset_name: the qualified_name of the asset, not including the connection portion
+    :param asset_name: the qualified_name of the asset, not including the
+        connection portion
     :param attributes: a list of attributes to retrieve for the asset
-    :return: the asset, if found
+    :returns: the asset, if found
     """
+
     connections = client.find_connections_by_name(
         name=connection_name, connector_type=connector_type
     )
@@ -53,14 +57,16 @@ def update_custom_metadata(
     reports: Optional[list[str]] = None,
 ) -> Asset:
     """
-    Update the custom metadata on the provided asset
+    Update the custom metadata on the provided asset.
+
     :param asset: the asset on which to update the custom metadata
     :param rating: the overall quality rating to give the asset
     :param passed: numer of checks that passed
     :param failed: number of checks that failed
     :param reports: URLs to detailed quality reports
-    :return: the result of the update
+    :returns: the result of the update
     """
+
     cma = asset.get_custom_metadata(CUSTOM_METADATA_NAME)
     cma["Rating"] = rating
     cma["Passed count"] = passed
@@ -92,7 +98,7 @@ def main():
     )
     # Note that the updated asset will NOT show the custom metadata, if you want
     # to see the custom metadata you need to re-retrieve the asset itself
-    assert updated
+    assert updated  # noqa: S101
     result = client.get_asset_by_guid(
         guid=updated.guid, asset_type=type(updated), ignore_relationships=True
     )

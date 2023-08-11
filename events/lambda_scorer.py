@@ -4,8 +4,7 @@ from typing import List, Optional
 
 from pyatlan.cache.custom_metadata_cache import CustomMetadataCache
 from pyatlan.client.atlan import AtlanClient
-from pyatlan.error import NotFoundError, ConflictError
-from pyatlan.events.atlan_lambda_handler import process_event
+from pyatlan.error import ConflictError, NotFoundError
 from pyatlan.events.atlan_event_handler import (
     AtlanEventHandler,
     get_current_view_of_asset,
@@ -13,17 +12,18 @@ from pyatlan.events.atlan_event_handler import (
     has_lineage,
     has_owner,
 )
+from pyatlan.events.atlan_lambda_handler import process_event
 from pyatlan.exceptions import AtlanException
-from pyatlan.model.assets import Asset, Badge, AtlasGlossaryTerm, Readme
+from pyatlan.model.assets import Asset, AtlasGlossaryTerm, Badge, Readme
 from pyatlan.model.enums import (
-    CertificateStatus,
     AtlanCustomAttributePrimitiveType,
     BadgeComparisonOperator,
     BadgeConditionColor,
+    CertificateStatus,
 )
 from pyatlan.model.events import AtlanEvent, AtlanEventPayload
 from pyatlan.model.structs import BadgeCondition
-from pyatlan.model.typedef import CustomMetadataDef, AttributeDef
+from pyatlan.model.typedef import AttributeDef, CustomMetadataDef
 
 CM_DAAP = "DaaP"
 CM_ATTR_DAAP_SCORE = "Score"
@@ -48,6 +48,13 @@ client = AtlanClient()
 
 
 def _create_cm_if_not_exists() -> Optional[str]:
+    """
+    Creates the custom metadata structure, if it does not already exist. (If it
+    already exists, does nothing.)
+
+    :returns: unique identifier for the custom metadata structure
+    """
+
     try:
         return CustomMetadataCache.get_id_for_name(CM_DAAP)
     except NotFoundError:
@@ -91,12 +98,14 @@ def _create_cm_if_not_exists() -> Optional[str]:
                 print("Unable to create badge over DaaP score.")
             return CustomMetadataCache.get_id_for_name(CM_DAAP)
         except ConflictError:
-            # Handle cross-thread race condition that the typedef has since been created
+            # Handle cross-thread race condition that the typedef has since
+            # been created
             try:
                 return CustomMetadataCache.get_id_for_name(CM_DAAP)
             except AtlanException:
                 print(
-                    "Unable to look up DaaP custom metadata, even though it should already exist."
+                    "Unable to look up DaaP custom metadata, even though it"
+                    "should already exist."
                 )
         except AtlanException:
             print("Unable to create DaaP custom metadata structure.")
@@ -107,6 +116,14 @@ def _create_cm_if_not_exists() -> Optional[str]:
 
 class LambdaScorer(AtlanEventHandler):
     def validate_prerequisites(self, event: AtlanEvent) -> bool:
+        """
+        Ensures the custom metadata structure exists (idempotently) before
+        attempting any further operation.
+
+        :returns: true if and only if the custom metadata strurcture exists
+            and the event has an asset in its payload
+        """
+
         return (
             _create_cm_if_not_exists() is not None
             and isinstance(event.payload, AtlanEventPayload)
@@ -114,6 +131,15 @@ class LambdaScorer(AtlanEventHandler):
         )
 
     def get_current_state(self, from_event: Asset) -> Optional[Asset]:
+        """
+        Retrieves the current state of the asset that triggered the event from
+        Atlan.
+
+        :param from_event: asset from the event payload
+        :returns: current state of the asset in Atlan, if it still exists in
+            Atlan
+        """
+
         search_attrs = SCORED_ATTRS
         search_attrs.extend(
             CustomMetadataCache.get_attributes_for_search_results(CM_DAAP)
@@ -128,16 +154,37 @@ class LambdaScorer(AtlanEventHandler):
         )
 
     def has_changes(self, original: Asset, modified: Asset) -> bool:
+        """
+        Determines whether the asset has changed as part of this event
+        processing or not.
+
+        :param original: asset as originally found in Atlan
+        :param modified: asset as changed by the event processing
+        :returns: true if and only if the asset has been changed by this event
+            processing
+        """
+
         score_original = -1.0
         score_modified = -1.0
         if cm_original := original.get_custom_metadata(CM_DAAP):
             score_original = cm_original.get(CM_ATTR_DAAP_SCORE)
         if cm_modified := modified.get_custom_metadata(CM_DAAP):
             score_modified = cm_modified.get(CM_ATTR_DAAP_SCORE)
-        print(f"Existing score = {score_original}, while new score = {score_modified}")
+        print(f"Existing score = {score_original}, new score = {score_modified}")
         return score_original != score_modified
 
     def calculate_changes(self, asset: Asset) -> List[Asset]:
+        """
+        Applies the logic of event handling for this event handler. Any changes
+        to be made to the asset as part of processing the event are made within
+        this method. For this sample, this processing involves calculating the
+        completeness score for the asset and storing the result into a custom
+        metadata attribute.
+
+        :param asset: asset as originally found in Atlan
+        :returns: list of all assets modified by the event processing
+        """
+
         score = 1.0
 
         if isinstance(asset, AtlasGlossaryTerm):
@@ -187,4 +234,12 @@ class LambdaScorer(AtlanEventHandler):
 
 
 def lambda_handler(event, context):
+    """
+    Entry point for event handling via an AWS Lambda function.
+
+    :param event: event details as-received by the AWS Lambda function
+    :param context: event processing execution context of the AWS Lambda
+        function
+    """
+
     process_event(LambdaScorer(client), event, context)

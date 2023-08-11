@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2023 Atlan Pte. Ltd.
-from pyatlan.client.atlan import AtlanClient, IndexSearchRequest, IndexSearchResults
+from pyatlan.client.atlan import AtlanClient, IndexSearchRequest
 from pyatlan.model.assets import Asset, SigmaWorkbook
 from pyatlan.model.enums import AtlanComparisonOperator, LineageDirection
 from pyatlan.model.lineage import EntityFilter, FilterList, LineageListRequest
@@ -11,7 +11,7 @@ client = AtlanClient()
 logger = get_logger(level="INFO")
 
 
-def find_all(type_name: str) -> IndexSearchResults:
+def find_all(type_name: str) -> AtlanClient.SearchResults:
     """
     This query will find all assets of the specified type
     that are active (not archived or soft-deleted).
@@ -67,14 +67,14 @@ def main():
             verified_sources = upstream_certified_sources(workbook.guid)
             if verified_sources:
                 logger.info(
-                    f"Workbook '{workbook.name}' ({workbook.guid})"
+                    f"Workbook '{workbook.name}' ({workbook.guid}) "
                     f"has upstream verified sources: "
                 )
                 for asset in verified_sources:
                     logger.info(f" . {asset.type_name}: {asset.qualified_name}")
             else:
                 logger.info(
-                    f"Workbook '{workbook.name}' ({workbook.guid}) does"
+                    f"Workbook '{workbook.name}' ({workbook.guid}) does "
                     f"NOT have any upstream verified sources."
                 )
 

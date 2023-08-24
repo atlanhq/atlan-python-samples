@@ -1,28 +1,34 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2023 Atlan Pte. Ltd.
-from pyatlan.client.atlan import AtlanClient, IndexSearchRequest
+from pyatlan.client.atlan import AtlanClient
 from pyatlan.model.assets import Asset, SigmaWorkbook
-from pyatlan.model.enums import AtlanComparisonOperator, LineageDirection
+from pyatlan.model.enums import (
+    AtlanComparisonOperator,
+    CertificateStatus,
+    LineageDirection,
+)
+from pyatlan.model.fluent_search import FluentSearch
 from pyatlan.model.lineage import EntityFilter, FilterList, LineageListRequest
-from pyatlan.model.search import DSL, Term
 from pyatlan.utils import get_logger
 
 client = AtlanClient()
 logger = get_logger(level="INFO")
 
 
-def find_all(type_name: str) -> AtlanClient.SearchResults:
+def find_all(asset_type: type) -> AtlanClient.SearchResults:
     """
     This query will find all assets of the specified type
     that are active (not archived or soft-deleted).
 
-    :param type_name: type of assets to find
+    :param asset_type: type of assets to find
     :returns: results of the search
     """
-    are_active = Term.with_state("ACTIVE")
-    are_term = Term.with_type_name(type_name)
-    dsl = DSL(query=are_active + are_term, from_=0, size=100)
-    search_request = IndexSearchRequest(dsl=dsl)
+    search_request = (
+        FluentSearch()
+        .where(FluentSearch.asset_type(asset_type))
+        .where(FluentSearch.active_assets())
+        .page_size(100)
+    ).to_request()
     return client.search(search_request)
 
 
@@ -41,14 +47,17 @@ def upstream_certified_sources(guid: str) -> list[Asset]:
     request.direction = LineageDirection.UPSTREAM
     request.offset = 0
     request.size = 100
-    request.attributes = ["name", "certificateStatus"]
+    request.attributes = [
+        Asset.NAME.atlan_field_name,
+        Asset.CERTIFICATE_STATUS.atlan_field_name,
+    ]
     request.entity_filters = FilterList(
         condition="AND",
         criteria=[
             EntityFilter(
-                attribute_name="certificateStatus",
+                attribute_name=Asset.CERTIFICATE_STATUS.atlan_field_name,
                 operator=AtlanComparisonOperator.CONTAINS,
-                attribute_value="VERIFIED",
+                attribute_value=CertificateStatus.VERIFIED.value,
             )
         ],
     )
@@ -61,7 +70,7 @@ def upstream_certified_sources(guid: str) -> list[Asset]:
 
 
 def main():
-    results = find_all(type_name="SigmaWorkbook")
+    results = find_all(SigmaWorkbook)
     for workbook in results:
         if isinstance(workbook, SigmaWorkbook):
             verified_sources = upstream_certified_sources(workbook.guid)

@@ -6,7 +6,7 @@ from pyatlan.cache.custom_metadata_cache import CustomMetadataCache
 from pyatlan.client.atlan import AtlanClient
 from pyatlan.model.assets import Asset
 from pyatlan.model.enums import AtlanConnectorType
-from pyatlan.model.search import DSL, IndexSearchRequest, TermAttributes, Terms
+from pyatlan.model.fluent_search import FluentSearch
 from pyatlan.utils import get_logger
 
 CUSTOM_METADATA_NAME = "Quality Data"
@@ -19,7 +19,7 @@ def find_asset(
     connection_name: str,
     asset_name: str,
     attributes: Optional[list[str]] = None,
-) -> Asset:
+) -> Optional[Asset]:
     """
     Given a connector type and otherwise-qualified name (not including the
     connection portion of the qualified_name), finds and returns the asset in
@@ -39,14 +39,14 @@ def find_asset(
     qualified_names = []
     for connection in connections:
         qualified_names.append(f"{connection.qualified_name}/{asset_name}")
-    by_name = Terms(field=TermAttributes.QUALIFIED_NAME.value, values=qualified_names)
-    dsl = DSL(query=by_name)
-    search_request = IndexSearchRequest(
-        dsl=dsl,
-        attributes=attributes,
-    )
-    results = client.search(search_request)
-    return results.current_page()[0] if results else None
+    search_request = (
+        FluentSearch(_includes_on_results=attributes).where(
+            Asset.QUALIFIED_NAME.within(qualified_names)
+        )
+    ).to_request()
+    if results := client.search(search_request):
+        return results.current_page()[0]
+    return None
 
 
 def update_custom_metadata(
@@ -80,29 +80,33 @@ def update_custom_metadata(
 
 
 def main():
-    asset = find_asset(
+    if asset := find_asset(
         connector_type=AtlanConnectorType.SNOWFLAKE,
         connection_name="development",
         asset_name="RAW/WIDEWORLDIMPORTERS_PURCHASING/SUPPLIERS",
         attributes=CustomMetadataCache.get_attributes_for_search_results(
             CUSTOM_METADATA_NAME
         ),
-    )
-    logger.info(f"Found asset: {asset}")
-    updated = update_custom_metadata(
-        asset=asset,
-        rating="OK",
-        passed=10,
-        failed=5,
-        reports=["https://www.example.com", "https://www.atlan.com"],
-    )
-    # Note that the updated asset will NOT show the custom metadata, if you want
-    # to see the custom metadata you need to re-retrieve the asset itself
-    assert updated  # noqa: S101
-    result = client.get_asset_by_guid(
-        guid=updated.guid, asset_type=type(updated), ignore_relationships=True
-    )
-    logger.info(f"Asset's custom metadata was updated: {result}")
+    ):
+        logger.info(f"Found asset: {asset}")
+        updated = update_custom_metadata(
+            asset=asset,
+            rating="OK",
+            passed=10,
+            failed=5,
+            reports=["https://www.example.com", "https://www.atlan.com"],
+        )
+        # Note that the updated asset will NOT show the custom metadata, if you want
+        # to see the custom metadata you need to re-retrieve the asset itself
+        assert updated  # noqa: S101
+        result = client.get_asset_by_guid(
+            guid=updated.guid, asset_type=type(updated), ignore_relationships=True
+        )
+        logger.info(f"Asset's custom metadata was updated: {result}")
+    else:
+        logger.warn(
+            "Unable to find asset: (development)/RAW/WIDEWORLDIMPORTERS_PURCHASING/SUPPLIERS"
+        )
 
 
 if __name__ == "__main__":

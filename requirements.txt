@@ -1,1 +1,1 @@
-pyatlan>=0.4.0
+pyatlan>=0.6.2

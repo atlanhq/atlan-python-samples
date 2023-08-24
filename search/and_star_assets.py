@@ -2,9 +2,9 @@
 # Copyright 2023 Atlan Pte. Ltd.
 import time
 
-from pyatlan.client.atlan import AtlanClient, IndexSearchRequest
+from pyatlan.client.atlan import AtlanClient
 from pyatlan.model.assets import Asset, AtlasGlossaryTerm
-from pyatlan.model.search import DSL, Term
+from pyatlan.model.fluent_search import FluentSearch
 from pyatlan.model.structs import StarredDetails
 from pyatlan.utils import get_logger
 
@@ -20,14 +20,17 @@ def find_assets() -> AtlanClient.SearchResults:
 
     :returns: results of the search
     """
-    are_active = Term.with_state("ACTIVE")
-    are_term = Term.with_type_name("AtlasGlossaryTerm")
     glossary = client.find_glossary_by_name("Metrics")
-    in_glossary = Term.with_glossary(glossary.qualified_name)
-    dsl = DSL(query=are_active + are_term + in_glossary, from_=0, size=100)
-    search_request = IndexSearchRequest(
-        dsl=dsl, attributes=["starredDetailsList", "starredBy", "anchor"]
-    )
+    search_request = (
+        FluentSearch()
+        .where(FluentSearch.active_assets())
+        .where(FluentSearch.asset_type(AtlasGlossaryTerm))
+        .where(AtlasGlossaryTerm.ANCHOR.eq(glossary.qualified_name))
+        .page_size(100)
+        .include_on_results(Asset.STARRED_DETAILS_LIST)
+        .include_on_results(Asset.STARRED_BY)
+        .include_on_results(AtlasGlossaryTerm.ANCHOR)
+    ).to_request()
     return client.search(search_request)
 
 
